@@ -8,11 +8,13 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
-class TodoListViewController: UITableViewController {
+class TodoListViewController: SwipeTableViewController {
+    
+    let realm = try! Realm()
     
     var toDoItems: Results<Item>?
-    let realm = try! Realm()
     
     var selectedCategory : Category? {
         didSet {
@@ -22,6 +24,7 @@ class TodoListViewController: UITableViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
     }
     
     //MARK - TableView Datasource methods
@@ -32,15 +35,15 @@ class TodoListViewController: UITableViewController {
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
-        if let item = toDoItems?[indexPath.row] {
-            cell.textLabel?.text = item.title
+        cell.textLabel?.text = toDoItems?[indexPath.row].title ?? "No items added"
             
-            cell.accessoryType = item.done ? .checkmark : .none
-        } else {
-            cell.textLabel?.text = "No items added"
-        }
+            if let colour = UIColor(hexString: selectedCategory!.bgColor)?.darken(byPercentage: CGFloat(indexPath.row) / CGFloat(toDoItems!.count) * 0.5) {
+                
+                cell.backgroundColor = colour
+                cell.textLabel?.textColor = ContrastColorOf(colour, returnFlat: true)
+            }
         
         return cell
     }
@@ -66,6 +69,24 @@ class TodoListViewController: UITableViewController {
 //        saveItems()
 
         tableView.deselectRow(at: indexPath, animated: true)
+    }
+    
+    //MARK - delete data from swipe
+    
+    override func updateModel(at indexPath: IndexPath) {
+        
+        super.updateModel(at: indexPath)
+        
+        if let item = self.toDoItems?[indexPath.row] {
+            
+            do {
+                try self.realm.write {
+                    self.realm.delete(item)
+                }
+            } catch {
+                print("Error saving done status \(error)")
+            }
+        }
     }
 
     //MARK - add new items
